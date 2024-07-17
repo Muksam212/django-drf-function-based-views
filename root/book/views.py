@@ -14,6 +14,16 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.pagination import PageNumberPagination
+
+
+#making custom page number pagination
+class CustomPagination(PageNumberPagination):
+    page_size = 2
+    page_size_query_param = "page_size"
+    max_page_size = 8
+
+
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
@@ -26,18 +36,21 @@ def get_tokens_for_user(user):
 # Create your views here.
 
 @api_view(['GET','POST'])
-@permission_classes([IsAuthenticated])
 def book_list(request):
     if request.method == "GET":
         filterset_backends = [DjangoFilterBackend]
         filterset_class = BookFilter
-        user = request.user
-        author = Author.objects.get(user = user)
-        book = Book.objects.all().filter(author = author)
+        # user = request.user
+        # author = Author.objects.get(user = user)
+        book = Book.objects.all()
         filterset = filterset_class(request.GET, queryset=book)
         if filterset.is_valid():
             book = filterset.qs
-        serializer = BookSerializer(book, many=True)
+
+        #applying pagination
+        pagination = CustomPagination()
+        page = pagination.paginate_queryset(book, request)
+        serializer = BookSerializer(page, many=True)
         return Response(serializer.data)
     
     elif request.method == "POST":
